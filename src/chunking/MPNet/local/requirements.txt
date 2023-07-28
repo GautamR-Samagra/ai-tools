@@ -1,10 +1,10 @@
 quart
 aiohttp
-PyPDF2
-sentence_transformers
-nltk
-scikit-learn
-numpy
 pandas
+tqdm
+sentence_transformers
+segeval
+numpy
+nltk
 scipy
-torch
+PyPDF2

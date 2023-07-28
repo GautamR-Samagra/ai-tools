@@ -1,24 +1,20 @@
-from request import ModelRequest
-import numpy as np 
-import nltk
-from PyPDF2 import PdfReader
+import numpy as np
+import pandas as pd
+import segeval
 import textwrap
+import json
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import math
 from scipy.signal import argrelextrema
+from PyPDF2 import PdfReader
+from request import ModelRequest
 import torch
+import nltk 
+from quart import Response
 
-
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    number_of_pages = len(reader.pages)
-    all_text = ""
-
-    for page in reader.pages:
-        all_text += page.extract_text()
-
-    return all_text
+nltk.download('punkt')
 
 class Splitter:
     def __init__(self,doc,max_chunk_length):
@@ -27,6 +23,12 @@ class Splitter:
         self.max_chunk_length = max_chunk_length
         self.embedding = None
         self.docToSentences()
+
+    def docToSentences(self):
+        sentences = sent_tokenize(self.doc)
+        for sentence in sentences:
+            currSentenceSplits = textwrap.wrap(sentence.strip(), self.max_chunk_length)
+            self.sentencesInDoc.extend(currSentenceSplits)
 
     def getChunksConsideringSentences(self):
       ## chunk having one sentence only. Keep on adding sentences using docToSentences until you reach maximum words threshold
@@ -92,6 +94,22 @@ class Splitter:
         diagonals = diagonals * activation_weights.reshape(-1,1)
         activated_similarities = np.sum(diagonals, axis=0)
         return activated_similarities
+    
+
+
+def extract_text_from_pdf(pdf_path):
+    reader = PdfReader(pdf_path)
+    number_of_pages = len(reader.pages)
+    all_text = ""
+
+    for page in reader.pages:
+        all_text += page.extract_text()
+
+    return all_text
+
+# Replace "NEP_Final_English.pdf" with the path to your PDF file
+pdf_text = extract_text_from_pdf("NEP_Final_English.pdf")
+
 
 class Model():
     def __new__(cls, context):
@@ -100,7 +118,14 @@ class Model():
             cls.instance = super(Model, cls).__new__(cls)
         return cls.instance
 
-    async def inference(self,  request: ModelRequest):
-        splitter = Splitter(pdf_text, 4 * 1024)
+    async def inference(self, request: ModelRequest):
+    # Modify this function according to model requirements such that inputs and output remains the same
+        splitter = Splitter(request.text, 4 * 1024)
         chunks = splitter.getChunksConsideringNeighbouringSimilarity()
-        return str(chunks[0])
+        df = pd.DataFrame({'content': chunks})
+        # Convert DataFrame to a CSV string
+        csv_string = df.to_csv(index=False)
+
+        # Properly escape the CSV string
+        
+        return csv_string
